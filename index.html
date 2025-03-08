@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHT Sensor Realtime Readings</title>
+    <img src="logo_aselab.jpg" alt="ASelab Logo" class="fixed-logo">
+
+
+    <style>
+        body {
+            background-color: #F5F5F5;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .data-container {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #FFF;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .data-item {
+            text-align: center;
+            margin: 0 10px; /* Giảm khoảng cách trái phải giữa các phần tử */
+            width: 45%; /* Đặt lại chiều rộng của mỗi phần tử */
+        }
+
+        .data-item h2 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .data-item p {
+            font-size: 48px;
+            font-weight: bold;
+            color: #6EB7FF;
+        }
+
+        .data-item small {
+            display: block;
+            margin-top: 5px;
+            font-size: 14px;
+            color: #888;
+        }
+        .data-head {
+            margin: auto;
+            width: 60%;
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #FFF;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+        }
+        .chart-row {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            margin: 20px auto;
+        }
+        .chart-container {
+            width: 50%;
+            height: 10cm;
+        }
+        .table-container {
+            width: 90%;
+            margin: 20px auto;
+            background-color: #FFF;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow-y: auto;
+            max-height: 300px; /* Giới hạn chiều cao */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table th, table td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        table th {
+            background-color: #6EB7FF;
+            color: white;
+            position: sticky;
+            top: 0; /* Sticky header */
+        }
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .current-time {
+            position: fixed;      /* Cố định vị trí trên màn hình */
+            top: 10px;            /* Cách lề trên 10px */
+            right: 10px;          /* Cách lề phải 10px */
+            background-color: #FFF;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            z-index: 9999;        /* Đảm bảo hiển thị trên tất cả các phần tử khác */
+        }
+        .fixed-logo {
+            position: fixed;  /* Cố định vị trí của hình ảnh */
+            bottom: 10px;     /* Khoảng cách từ mép dưới 10px */
+            right: 10px;      /* Khoảng cách từ mép phải 10px */
+            width: 150px;     /* Chiều rộng hình ảnh */
+            height: 100px;    /* Chiều cao hình ảnh */
+            opacity: 0.3;     /* Làm hình ảnh mờ */
+            z-index: 9999;    /* Đảm bảo hình ảnh luôn ở trên các phần tử khác */
+            pointer-events: none; /* Ngăn hình ảnh chiếm diện tích khi tương tác chuột */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="current-time" id="current-time"></div>
+
+    <div class="data-head">DHT Sensor Realtime Readings</div>
+
+    <div class="data-container">
+        <div class="data-item">
+            <h2>Temperature</h2>
+            <p id="temperature">-- °C</p>
+            <small id="temp-time">Last updated: --</small>
+            <small id="temp-freshness">Data age: --</small> <!-- Thêm phần này -->
+        </div>
+        <div class="data-item">
+            <h2>Humidity</h2>
+            <p id="humidity">--%</p>
+            <small id="humi-time">Last updated: --</small>
+            <small id="humi-freshness">Data age: --</small> <!-- Thêm phần này -->
+        </div>
+        
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-container">
+            <canvas id="temperatureChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="humidityChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Temperature (°C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Data Freshness of humidity (seconds)</th>
+                    <th>Data Freshness of temperature (seconds)</th>
+                </tr>
+            </thead>
+            <tbody id="history-table">
+                <!-- Data rows will be appended dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB-T62koUSSyhabj0ToiPRthP3TSeQp73Y",
+            authDomain: "esp32-63372.firebaseapp.com",
+            databaseURL: "https://esp32-63372-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "esp32-63372",
+            storageBucket: "esp32-63372.firebasestorage.app",
+            messagingSenderId: "157704145698",
+            appId: "1:157704145698:web:e94448d514ff32d1a8737b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Reference to the database
+        const database = firebase.database();
+
+        // UI Update Function
+        function updateUI(elementId, value, unit = '', timestampId = null) {
+            document.getElementById(elementId).innerHTML = value + unit;
+            if (timestampId) {
+                const currentTime = new Date().toLocaleTimeString();
+                document.getElementById(timestampId).innerHTML = `Last updated: ${currentTime}`;
+            }
+        }
+
+        // Charts setup
+        const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+        const humiCtx = document.getElementById('humidityChart').getContext('2d');
+
+        const temperatureChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Time' } },
+                    y: { title: { display: true, text: 'Temperature (°C)' } }
+                }
+            }
+        });
+
+        const humidityChart = new Chart(humiCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humidity (%)',
+                    data: [],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Time' } },
+                    y: { title: { display: true, text: 'Humidity (%)' } }
+                }
+            }
+        });
+
+        const maxDataPoints = 20;
+
+        function addData(chart, label, data) {
+            if (chart.data.labels.length >= maxDataPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.data.labels.push(label);
+            chart.data.datasets[0].data.push(data);
+            chart.update();
+        }
+
+        // Update table
+        function updateTable(timestamp, temperature, humidity) {
+            const table = document.getElementById('history-table');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${timestamp}</td>
+                <td>${temperature} °C</td>
+                <td>${humidity} %</td>
+                <td>${value1} seconds</td>
+                <td>${value2} seconds</td>
+            `;
+            table.appendChild(row);
+        }
+
+        // Realtime updates
+        const humidityRef = database.ref('sensor/humidity');
+        const stateRef = database.ref('sensor/state');
+        const temperatureRef = database.ref('sensor/temperature');
+
+      // Các biến để lưu bộ đếm thời gian cho nhiệt độ và độ ẩm
+        let temperatureAge = 0; 
+        let humidityAge = 0;
+        let value1 = 0;
+        let value2 = 0;
+        // Cập nhật "độ tươi" của dữ liệu mỗi giây
+        setInterval(() => {
+            temperatureAge++;
+            value1 = temperatureAge;
+            humidityAge++;
+            value2 = humidityAge;
+            const tempFreshnessElement = document.getElementById('temp-freshness');
+            const humiFreshnessElement = document.getElementById('humi-freshness');
+            
+            tempFreshnessElement.innerHTML = `Data age: ${temperatureAge} seconds`;
+            humiFreshnessElement.innerHTML = `Data age: ${humidityAge} seconds`;
+
+            // Đổi màu theo thời gian của dữ liệu
+            tempFreshnessElement.style.color = temperatureAge < 20 ? 'green' : 'red';
+            humiFreshnessElement.style.color = humidityAge < 20 ? 'green' : 'red';
+        }, 1000);
+        // Cập nhật giao diện người dùng và khởi động lại bộ đếm thời gian cho độ tươi
+        function updateUI(elementId, value, unit = '', timestampId = null, freshnessId = null) {
+            document.getElementById(elementId).innerHTML = value + unit;
+            if (timestampId) {
+                const currentTime = new Date().toLocaleTimeString();
+                document.getElementById(timestampId).innerHTML = `Last updated: ${currentTime}`;
+            }
+            if (freshnessId) {
+                if (freshnessId === 'temp-freshness') {
+                    temperatureAge = 0; // Reset thời gian của dữ liệu nhiệt độ
+                } else if (freshnessId === 'humi-freshness') {
+                    humidityAge = 0; // Reset thời gian của dữ liệu độ ẩm
+                }
+            }
+        }
+
+        // Lắng nghe sự kiện thay đổi dữ liệu từ Firebase
+    stateRef.on('value', function(snapshot) {
+        const state = snapshot.val();
+        if (state) {
+            humidityRef.on('value', function(snapshot) {
+                const humidity = snapshot.val();
+                const currentTime = new Date().toLocaleTimeString();
+                updateUI('humidity', humidity, '%', 'humi-time', 'humi-freshness');
+                addData(humidityChart, currentTime, humidity);
+                updateTable(currentTime, document.getElementById('temperature').innerText.split("°C")[0], humidity);
+            });
+
+            temperatureRef.on('value', function(snapshot) {
+                const temperature = snapshot.val();
+                const currentTime = new Date().toLocaleTimeString();
+                updateUI('temperature', temperature, '°C', 'temp-time', 'temp-freshness');
+                addData(temperatureChart, currentTime, temperature);
+                updateTable(currentTime, temperature, document.getElementById('humidity').innerText.split("%")[0]);
+            });
+
+        } else {
+            document.getElementById('temperature').textContent = 'N/A';
+            document.getElementById('humidity').textContent = 'N/A';
+        }
+    });
+
+        
+
+                
+                // Hiển thị thời gian hiện tại
+        // Hiển thị đồng hồ thời gian hiện tại
+        function displayClock() {
+            const currentTimeElement = document.getElementById('current-time');
+            setInterval(() => {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        displayClock();
+
+    </script>
+</body>
+</html>
