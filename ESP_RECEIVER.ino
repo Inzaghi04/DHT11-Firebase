@@ -15,10 +15,10 @@
 #define WIFI_PASSWORD "n06111977"
 
 // Insert Firebase project API Key
-#define API_KEY "AIzaSyB-T62koUSSyhabj0ToiPRthP3TSeQp73Y"
+#define API_KEY "AIzaSyARIdReNeciGu2xci0p_XTJaH1XtPy75HU"
 
 // Insert RTDB URL
-#define DATABASE_URL "https://esp32-63372-default-rtdb.asia-southeast1.firebasedatabase.app/" 
+#define DATABASE_URL "https://ase-dji-default-rtdb.asia-southeast1.firebasedatabase.app/" 
 
 // Define DHT sensor type and pin
 #define DHTPIN 4       // GPIO pin connected to DHT sensor
